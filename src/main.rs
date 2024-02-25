@@ -45,8 +45,8 @@ impl event::EventHandler<ggez::GameError> for GameState {
                     .scale(rect.size())
                     .color(Color::BLACK),
             );
-            let image = Image::from_path(ctx, "2_of_clubs.png")?;
-            canvas.draw(&image, DrawParam::new().dest_rect(rect));
+            //let image = Image::from_path(ctx, "2_of_clubs.png")?;
+            canvas.draw(&card.image, DrawParam::new().dest_rect(rect));
         }
 
         canvas.finish(ctx)?;
@@ -97,17 +97,21 @@ fn main() -> GameResult {
     // let state = GameState::new(&mut ctx);
     // event::run(ctx, events_loop, state)
 
+
+
+    let mut cb = ggez::ContextBuilder::new("Solitaire", "Nat R")
+        .window_setup(ggez::conf::WindowSetup::default().title("Solitaire"))
+        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1));
+
     let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
         let mut path = path::PathBuf::from(manifest_dir);
-        path.push("cards");
+        path.push("resources//");
         path
     } else {
-        path::PathBuf::from("./cards")
+        path::PathBuf::from(".//cards//")
     };
+    cb = cb.add_resource_path(resource_dir);
 
-    let cb = ggez::ContextBuilder::new("imageview", "ggez").add_resource_path(resource_dir)
-        .window_setup(ggez::conf::WindowSetup::default().title("Solitaire"))
-         .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1));
     let (mut ctx, event_loop) = cb.build()?;
 
     let state = GameState::new(&mut ctx);
