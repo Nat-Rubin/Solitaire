@@ -108,19 +108,14 @@ fn main() -> GameResult {
 
     let mut cb = ggez::ContextBuilder::new("Solitaire", "Nat R")
         .window_setup(ggez::conf::WindowSetup::default().title("Solitaire"))
-        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
-        // .resources_dir_name("resources\\")
-        ;
-
-    // let state = GameState::new(&mut ctx);
-    // event::run(ctx, events_loop, state)
+        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1));
 
     let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
         let mut path = path::PathBuf::from(manifest_dir);
-        path.push("resources\\");
+        path.push("resources/");
         path
     } else {
-        path::PathBuf::from(".\\resources\\")
+        path::PathBuf::from("./resources/")
     };
     cb = cb.add_resource_path(resource_dir);
 
