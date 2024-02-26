@@ -32,7 +32,7 @@ pub struct Card {
     pub num: u8,
     pub suit: Suit,
     pub color: Color,
-    pub image: ggez::graphics::Image,
+    pub image: graphics::Image,
     pub flipped: bool,
     pub position: (f32, f32),
     pub rect: graphics::Mesh,
@@ -48,7 +48,7 @@ impl Card {
             color: Color::Red,
             image,
             flipped: false,
-            position: (10.0, 10.0),
+            position: (0.0, 0.0),
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
         }
@@ -61,7 +61,7 @@ impl Card {
             color: Color::Red,
             image,
             flipped: false,
-            position: (10.0, 10.0),
+            position: (0.0, 0.0),
             rect: ggez::graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
         }
@@ -75,7 +75,7 @@ impl Card {
             color: Color::Black,
             image,
             flipped: false,
-            position: (10.0, 10.0),
+            position: (0.0, 0.0),
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
         }
@@ -89,7 +89,7 @@ impl Card {
             color: Color::Black,
             image,
             flipped: false,
-            position: (10.0, 10.0),
+            position: (0.0, 0.0),
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
         }
@@ -235,27 +235,34 @@ impl Deck {
     }
 }
 
-pub struct CardHolderDeck {
+pub struct Pile {
     pub cards: Vec<Card>,
     pub direction: Option<Direction>,
-    pub face_down: bool,
+    pub position: (f32, f32),
 }
 
-pub struct CardHolderCards {
-    pub cards: Vec<Card>,
-    pub direction: Option<Direction>,
-    pub face_down: bool,
+impl Pile {
+    fn new(direction: Option<Direction>, position: (f32, f32)) -> Self {
+        Pile {
+            cards: Vec::new(),
+            direction,
+            position,
+        }
+    }
+
+    fn on_click(&self, ) {
+
+    }
 }
 
-pub struct CardHolderAces {
-    pub cards: Vec<Card>,
-    pub direction: Option<Direction>,
-    pub face_down: bool,
-}
 
 pub struct GameState {
     pub screen: graphics::ScreenImage,
     pub deck: Deck,
+    // pub hearts_pile: Pile::new(None), ),
+    // pub diamonds_pile: Pile,
+    // pub clubs_holder: Pile,
+    // pub spades_holder: Pile,
     pub gameover: bool,
 }
 
@@ -264,6 +271,10 @@ impl GameState {
         GameState {
             screen: graphics::ScreenImage::new(ctx, graphics::ImageFormat::Rgba8UnormSrgb, 1., 1., 1),
             deck: Deck::new(ctx),
+            // hearts_pile: Pile {},
+            // diamonds_pile: Pile {},
+            // clubs_holder: Pile {},
+            // spades_holder: Pile {},
             gameover: false,
         }
     }

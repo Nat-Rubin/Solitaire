@@ -6,6 +6,7 @@ use ggez::{event, graphics, Context, GameError, GameResult};
 use std::path::PathBuf;
 use std::process::exit;
 use std::{env, path};
+use ggez::mint::Vector2;
 
 use image::io::Reader as ImageReader;
 
@@ -14,7 +15,7 @@ mod structs;
 
 const CARD_WIDTH: f32 = 100.0;
 const CARD_HEIGHT: f32 = 140.0;
-
+const CARD_IMAGE_SCALE: f32 = 0.20;
 const GRID_SIZE: (i16, i16) = (9, 15);
 
 const SCREEN_SIZE: (f32, f32) = (
@@ -31,7 +32,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.05, 0.25, 0.15, 1.0]));
 
-        for card in &self.deck.cards {
+        for card in self.deck.cards.iter().rev() {
             let rect = Rect::new(card.position.0, card.position.1, CARD_WIDTH, CARD_HEIGHT);
             canvas.draw(
                 &graphics::Quad,
@@ -40,8 +41,8 @@ impl event::EventHandler<ggez::GameError> for GameState {
                     .scale(rect.size())
                     .color(Color::BLACK),
             );
-            // let image = Image::from_path(ctx, "cards\\2_of_clubs.png")?;
-            canvas.draw(&card.image, DrawParam::new().dest_rect(rect));
+            // let image = Image::from_path(ctx, &card.image)?;
+            canvas.draw(&card.image, DrawParam::new().dest(rect.point()).scale([CARD_IMAGE_SCALE, CARD_IMAGE_SCALE]));
         }
 
         canvas.finish(ctx)?;
@@ -56,15 +57,15 @@ impl event::EventHandler<ggez::GameError> for GameState {
         x: f32,
         y: f32,
     ) -> GameResult {
-        for mut card in &mut self.deck.cards {
-            if button == event::MouseButton::Left
-                && x >= card.position.0
-                && x <= card.position.0 + CARD_WIDTH
-                && y >= card.position.1
-                && y <= card.position.1 + CARD_HEIGHT
-            {
-                card.set_dragging(true);
-                break;
+        if button == MouseButton::Left {
+            for mut card in &mut self.deck.cards {
+                if x >= card.position.0
+                    && x <= card.position.0 + CARD_WIDTH
+                    && y >= card.position.1
+                    && y <= card.position.1 + CARD_HEIGHT {
+                    card.set_dragging(true);
+                    break;
+                }
             }
         }
         Ok(())
