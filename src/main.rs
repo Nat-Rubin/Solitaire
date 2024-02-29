@@ -1,14 +1,12 @@
-use crate::structs::{Card, GameState};
+use crate::structs::{Card, GameState, Pile, Piles};
 use ggez;
 use ggez::event::MouseButton;
-use ggez::graphics::{Color, DrawParam, Rect};
+use ggez::graphics::{Canvas, Color, DrawParam, Rect};
 use ggez::{event, graphics, Context, GameError, GameResult};
 use std::path::PathBuf;
 use std::process::exit;
 use std::{env, path};
-use ggez::mint::Vector2;
-
-use image::io::Reader as ImageReader;
+use crate::structs::Piles::Deck;
 
 mod cards;
 mod structs;
@@ -23,7 +21,14 @@ const SCREEN_SIZE: (f32, f32) = (
     GRID_SIZE.1 as f32 * CARD_WIDTH,
 );
 
-impl event::EventHandler<ggez::GameError> for GameState {
+fn within_pile(x:f32, y: f32, pile: &Pile) -> bool {
+    return x >= pile.position.0
+        && x <= pile.position.0 + CARD_WIDTH
+        && y >= pile.position.1
+        && y <= pile.position.1 + CARD_HEIGHT
+}
+
+impl event::EventHandler<ggez::GameError> for GameState<> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         Ok(())
     }
@@ -32,6 +37,12 @@ impl event::EventHandler<ggez::GameError> for GameState {
         let card_back: graphics::Image = graphics::Image::from_path(ctx, PathBuf::from("/cards/card_back.png")).unwrap();
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.05, 0.25, 0.15, 1.0]));
+
+        if self.current_cards.is_some() {
+            draw_cards(self.current_cards.as_ref().unwrap(), &mut canvas);
+        }
+
+        draw_cards(&self.discard, &mut canvas);
 
         for card in self.deck.cards.iter() {
             let rect = Rect::new(card.position.0, card.position.1, CARD_WIDTH, CARD_HEIGHT);
@@ -52,18 +63,18 @@ impl event::EventHandler<ggez::GameError> for GameState {
             }
         }
 
-        for card in self.discard.cards.iter() {
-            let rect = Rect::new(card.position.0, card.position.1, CARD_WIDTH, CARD_HEIGHT);
-            canvas.draw(
-                &graphics::Quad,
-                DrawParam::new()
-                    .dest(rect.point())
-                    .scale(rect.size())
-                    .color(Color::BLACK),
-            );
-            // let image = Image::from_path(ctx, &card.image)?;
-                canvas.draw(&card.image, DrawParam::new().dest(rect.point()).scale([CARD_IMAGE_SCALE, CARD_IMAGE_SCALE]));
-        }
+        // for card in self.discard.cards.iter() {
+        //     let rect = Rect::new(card.position.0, card.position.1, CARD_WIDTH, CARD_HEIGHT);
+        //     canvas.draw(
+        //         &graphics::Quad,
+        //         DrawParam::new()
+        //             .dest(rect.point())
+        //             .scale(rect.size())
+        //             .color(Color::BLACK),
+        //     );
+        //     // let image = Image::from_path(ctx, &card.image)?;
+        //     canvas.draw(&card.image, DrawParam::new().dest(rect.point()).scale([CARD_IMAGE_SCALE, CARD_IMAGE_SCALE]));
+        // }
 
         canvas.finish(ctx)?;
         ggez::timer::yield_now();
@@ -78,23 +89,26 @@ impl event::EventHandler<ggez::GameError> for GameState {
         y: f32,
     ) -> GameResult {
         if button == MouseButton::Left {
-            let is_deck_empty: bool = self.deck.cards.is_empty();
-            if is_deck_empty {
-                self.mouse_position = (x, y);
-            } else {
-                let mut card: &mut Card = self.deck.cards.first_mut().unwrap();
-                //for mut card in &mut self.deck.cards {
-                if x >= card.position.0
-                    && x <= card.position.0 + CARD_WIDTH
-                    && y >= card.position.1
-                    && y <= card.position.1 + CARD_HEIGHT {
-                    self.mouse_position = (x, y);
-                    card.set_dragging(true);
-                }
+            self.mouse_position = (x, y);
+            let is_discard_empty: bool = self.discard.cards.is_empty();
+
+            // check discard
+            if within_pile(x, y, &self.discard) {
+                if is_discard_empty { return Ok(()); }  // No card to move, just return
+                //let card: &Card = self.discard.cards.last().unwrap();
+                let mut new_cards = Pile {
+                    cards: vec![],
+                    direction: None,
+                    position: (x, y),
+                };
+                self.discard.move_card(&mut new_cards, 0, true);
+                self.current_cards = Some(new_cards.clone());
+                self.current_pile = Some(Piles::Discard);
             }
-            //}
-            // Click on deck, put card in discard pile, flip card
-            //for mut card in
+            // check deck
+            else if within_pile(x, y, &self.deck) {
+                    self.current_pile = Some(Piles::Deck);
+            }
         }
         Ok(())
     }
@@ -107,28 +121,51 @@ impl event::EventHandler<ggez::GameError> for GameState {
         y: f32,
     ) -> GameResult {
         if button == MouseButton::Left {
-            let is_deck_empty: bool = self.deck.cards.is_empty();
-            // TODO: change this to mouse movement
-            if is_deck_empty {
-                if (x, y) == self.mouse_position {
-                    println!("Here");
-                    self.deck.reset(&mut self.discard);
-                    return Ok(());
-                }
-            } else {
-                let mut card: &mut Card = self.deck.cards.first_mut().unwrap();
-                if (x, y) == self.mouse_position {
-                    if is_deck_empty {
-                        println!("Here");
-                        self.deck.reset(&mut self.discard);
-                        return Ok(());
+            match self.current_pile {
+                Some(Piles::Deck) => {
+                    if (x, y) == self.mouse_position {  // check if mouse moved
+                        // check deck
+                        if within_pile(x, y, &self.deck) {
+                            let is_deck_empty: bool = self.deck.cards.is_empty();
+                            if is_deck_empty {
+                                println!("Here");
+                                self.deck.reset(&mut self.discard);
+                                return Ok(());
+                            } else {
+                                let mut card: &mut Card = self.deck.cards.first_mut().unwrap();
+                                if (x, y) == self.mouse_position {
+                                    card.set_flipped(true);
+                                    card.set_dragging(false);
+                                    self.deck.move_card(&mut self.discard, 0, false);
+                                }
+                            }
+                        } else {
+
+                        }
+                    } else {
+                        //for card in
+                        // let mut card: &mut Card = self.deck.cards.first_mut().unwrap();
+                        // card.set_dragging(false);
                     }
-                    card.set_flipped(true);
-                    self.deck.move_card(&mut self.discard);
                 }
+                Some(Piles::Discard) => {
+                    let mut card: &mut Card = self.discard.cards.last_mut().unwrap();
+                    card.set_dragging(false);
+
+                    if within_pile(x, y, &self.hearts_pile) {
+
+                    } else if within_pile(x, y, &self.diamonds_pile) {
+
+                    } else if within_pile(x, y, &self.clubs_pile) {
+
+                    } else if within_pile(x, y, &self.spades_pile) {
+
+                    }
+
+                }
+
+                (_) => println!("{:?} is not yet implemented!", self.current_pile)
             }
-            //let mut card: &mut Card = self.deck.cards.first_mut().unwrap();
-            //card.set_dragging(false);
         }
         Ok(())
     }
@@ -138,16 +175,43 @@ impl event::EventHandler<ggez::GameError> for GameState {
         _ctx: &mut Context,
         x: f32,
         y: f32,
-        _dx: f32,
-        _dy: f32,
+        dx: f32,
+        dy: f32,
     ) -> GameResult {
-        /* already an &mut Card*/
-        for card in &mut self.deck.cards {
-            if card.dragging {
-                card.set_position((x - CARD_WIDTH / 2.0, y - CARD_HEIGHT / 2.0));
+        // let is_deck_empty: bool = self.discard.cards.is_empty();
+        // if is_deck_empty {
+        //     return Ok(());
+        // } else {
+        //     let card: &mut Card = self.discard.cards.last_mut().unwrap();
+        //     if card.dragging {
+        //         card.set_position((x - CARD_WIDTH / 2.0, y - CARD_HEIGHT / 2.0));
+        //     }
+        // }
+        let mut current_cards: &mut Option<&mut Pile> = &mut self.current_cards.as_mut();
+        match current_cards {
+            None => {}
+            Some(_) => {
+                for card in &mut current_cards.as_mut().unwrap().cards {
+                    card.set_position((x, y));
+                }
+                return Ok(());
             }
         }
         Ok(())
+    }
+}
+
+fn draw_cards(pile: &Pile, canvas: &mut Canvas) {
+    for card in pile.cards.iter() {
+        let rect = Rect::new(card.position.0, card.position.1, CARD_WIDTH, CARD_HEIGHT);
+        canvas.draw(
+            &graphics::Quad,
+            DrawParam::new()
+                .dest(rect.point())
+                .scale(rect.size())
+                .color(Color::BLACK),
+        );
+        canvas.draw(&card.image, DrawParam::new().dest(rect.point()).scale([CARD_IMAGE_SCALE, CARD_IMAGE_SCALE]));
     }
 }
 

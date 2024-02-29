@@ -6,7 +6,7 @@ use crate::{CARD_HEIGHT, CARD_WIDTH};
 
 
 #[derive(Clone, Copy, Debug)]
-enum Direction {
+pub enum Direction {
     Down,
 }
 
@@ -18,10 +18,28 @@ pub enum Suit {
     Diamonds,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Color {
     Red,
     Black,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Piles {
+    Deck,
+    Discard,
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades,
+    First,
+    Second,
+    Third,
+    Fourth,
+    Fifth,
+    Sixth,
+    Seventh,
+
 }
 
 pub struct GridPosition {
@@ -133,11 +151,20 @@ impl Pile {
         self.cards.shuffle(&mut rand::thread_rng());
     }
 
-    pub fn move_card(&mut self, dest_pile: &mut Pile) {
-        let mut new_card = self.cards.remove(0);
-        println!("{:?}", dest_pile.position);
-        new_card.position = dest_pile.position;
-        dest_pile.cards.push(new_card);
+    pub fn move_card(&mut self, dest_pile: &mut Pile, mut index: i32, is_reverse: bool) {
+        //let mut i: i32 = index.unwrap();
+        if is_reverse {
+            self.cards.reverse();
+        }
+        while index >= 0 {
+            let mut new_card = self.cards.remove(index as usize);
+            new_card.position = dest_pile.position;
+            dest_pile.cards.push(new_card);
+            index -= 1;
+        }
+        if is_reverse {
+            self.cards.reverse();
+        }
     }
 
     pub fn reset(&mut self, dest_pile: &mut Pile) {
@@ -146,6 +173,7 @@ impl Pile {
             new_card.set_position(self.position);
             self.cards.push(new_card);
         }
+        dest_pile.cards.clear();
         println!("{:?}", dest_pile.cards);
     }
 }
@@ -274,31 +302,34 @@ impl Pile {
     }
 }
 
-pub struct GameState {
+pub struct GameState<> {
     pub screen: graphics::ScreenImage,
     pub deck: Pile,
     pub discard: Pile,
     pub hearts_pile: Pile,
     pub diamonds_pile: Pile,
-    pub clubs_holder: Pile,
-    pub spades_holder: Pile,
+    pub clubs_pile: Pile,
+    pub spades_pile: Pile,
+    pub current_cards: Option<Pile>,
     pub gameover: bool,
-    pub mouse_position: (f32, f32)
+    pub mouse_position: (f32, f32),
+    pub current_pile: Option<Piles>,
 }
 
-impl GameState {
+impl<> GameState<> {
     pub fn new(ctx: &mut Context) -> Self {
         GameState {
             screen: graphics::ScreenImage::new(ctx, graphics::ImageFormat::Rgba8UnormSrgb, 1., 1., 1),
             deck: Pile::new_deck(ctx, None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            // deck: Pile::new_deck(ctx, None, (100.0, 100.0)),
             discard: Pile::new(None, (2.0*CARD_WIDTH + 10.0, 1.0*CARD_HEIGHT)),
             hearts_pile: Pile::new(None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
             diamonds_pile: Pile::new(None, (5.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            clubs_holder: Pile::new(None, (7.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            spades_holder: Pile::new(None, (9.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            clubs_pile: Pile::new(None, (7.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            spades_pile: Pile::new(None, (9.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            current_cards: None,
             gameover: false,
-            mouse_position: (0.0, 0.0)
+            mouse_position: (0.0, 0.0),
+            current_pile: None,
         }
     }
 
