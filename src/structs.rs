@@ -39,7 +39,7 @@ pub enum Piles {
     Fifth,
     Sixth,
     Seventh,
-
+    NewCards
 }
 
 pub struct GridPosition {
@@ -66,7 +66,7 @@ impl Card {
             suit: Suit::Hearts,
             color: Color::Red,
             image,
-            flipped: true,
+            flipped: false,
             position,
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
@@ -79,7 +79,7 @@ impl Card {
             suit: Suit::Diamonds,
             color: Color::Red,
             image,
-            flipped: true,
+            flipped: false,
             position,
             rect: ggez::graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
@@ -93,7 +93,7 @@ impl Card {
             suit: Suit::Clubs,
             color: Color::Black,
             image,
-            flipped: true,
+            flipped: false,
             position,
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
@@ -107,7 +107,7 @@ impl Card {
             suit: Suit::Spades,
             color: Color::Black,
             image,
-            flipped: true,
+            flipped: false,
             position,
             rect: graphics::Mesh::from_data(ctx, mb.build()),
             dragging: false,
@@ -129,14 +129,16 @@ impl Card {
 
 #[derive(Clone, Debug)]
 pub struct Pile {
+    pub pile: Piles,
     pub cards: Vec<Card>,
     pub direction: Option<Direction>,
     pub position: (f32, f32),
 }
 
 impl Pile {
-    fn new(direction: Option<Direction>, position: (f32, f32)) -> Self {
+    fn new(pile: Piles, direction: Option<Direction>, position: (f32, f32)) -> Self {
         Pile {
+            pile,
             cards: Vec::new(),
             direction,
             position,
@@ -151,14 +153,16 @@ impl Pile {
         self.cards.shuffle(&mut rand::thread_rng());
     }
 
-    pub fn move_card(&mut self, dest_pile: &mut Pile, mut index: i32, is_reverse: bool) {
-        //let mut i: i32 = index.unwrap();
+    pub fn move_card(&mut self, dest_pile: &mut Pile, mut index: i32, is_reverse: bool, flip_card_flag: bool) {
         if is_reverse {
             self.cards.reverse();
         }
         while index >= 0 {
             let mut new_card = self.cards.remove(index as usize);
             new_card.position = dest_pile.position;
+            if flip_card_flag{
+                new_card.flipped = true;
+            }
             dest_pile.cards.push(new_card);
             index -= 1;
         }
@@ -174,12 +178,34 @@ impl Pile {
             self.cards.push(new_card);
         }
         dest_pile.cards.clear();
-        println!("{:?}", dest_pile.cards);
+    }
+
+    pub fn is_aces_valid(&mut self, current_pile: &mut Pile) -> bool{
+        // if !self.cards.is_empty() {
+        //     let top_card: &Card = self.cards.last().unwrap();
+        //
+        // }
+        return true;
+    }
+
+    pub fn is_number_valid(&mut self, mut current_pile: &mut Pile) -> bool{
+        if !self.cards.is_empty() {
+            let top_card: &Card = self.cards.last().unwrap();
+            if current_pile.cards.first().unwrap().color != top_card.color && current_pile.cards.first().unwrap().num == top_card.num-1 {
+                println!("Valid!!");
+                current_pile.move_card(self, (self.cards.len()-1) as i32, false, true);
+            } else {
+                return false;
+            }
+        } else {
+            println!("KING!");
+        }
+        return true;
     }
 }
 
 impl Pile {
-    pub fn new_deck(ctx: &mut Context, direction: Option<Direction>, position: (f32, f32)) -> Self {
+    pub fn new_deck(ctx: &mut Context, pile: Piles, direction: Option<Direction>, position: (f32, f32)) -> Self {
         let heart_ace: Card     = Card::from_heart(1, ggez::graphics::Image::from_path(ctx, PathBuf::from("/cards/ace_of_hearts.png")).unwrap(), ctx, position);
         let heart_two: Card     = Card::from_heart(2, ggez::graphics::Image::from_path(ctx, PathBuf::from("/cards/2_of_hearts.png")).unwrap(), ctx, position);
         let heart_three: Card   = Card::from_heart(3, ggez::graphics::Image::from_path(ctx, PathBuf::from("/cards/3_of_hearts.png")).unwrap(), ctx, position);
@@ -252,49 +278,50 @@ impl Pile {
         deck.push(heart_queen);
         deck.push(heart_king);
 
-        // deck.push(diamond_ace);
-        // deck.push(diamond_two);
-        // deck.push(diamond_three);
-        // deck.push(diamond_four);
-        // deck.push(diamond_five);
-        // deck.push(diamond_six);
-        // deck.push(diamond_seven);
-        // deck.push(diamond_eight);
-        // deck.push(diamond_nine);
-        // deck.push(diamond_ten);
-        // deck.push(diamond_jack);
-        // deck.push(diamond_queen);
-        // deck.push(diamond_king);
-        //
-        // deck.push(club_ace);
-        // deck.push(club_two);
-        // deck.push(club_three);
-        // deck.push(club_four);
-        // deck.push(club_five);
-        // deck.push(club_six);
-        // deck.push(club_seven);
-        // deck.push(club_eight);
-        // deck.push(club_nine);
-        // deck.push(club_ten);
-        // deck.push(club_jack);
-        // deck.push(club_queen);
-        // deck.push(club_king);
-        //
-        // deck.push(spade_ace);
-        // deck.push(spade_two);
-        // deck.push(spade_three);
-        // deck.push(spade_four);
-        // deck.push(spade_five);
-        // deck.push(spade_six);
-        // deck.push(spade_seven);
-        // deck.push(spade_eight);
-        // deck.push(spade_nine);
-        // deck.push(spade_ten);
-        // deck.push(spade_jack);
-        // deck.push(spade_queen);
-        // deck.push(spade_king);
+        deck.push(diamond_ace);
+        deck.push(diamond_two);
+        deck.push(diamond_three);
+        deck.push(diamond_four);
+        deck.push(diamond_five);
+        deck.push(diamond_six);
+        deck.push(diamond_seven);
+        deck.push(diamond_eight);
+        deck.push(diamond_nine);
+        deck.push(diamond_ten);
+        deck.push(diamond_jack);
+        deck.push(diamond_queen);
+        deck.push(diamond_king);
+
+        deck.push(club_ace);
+        deck.push(club_two);
+        deck.push(club_three);
+        deck.push(club_four);
+        deck.push(club_five);
+        deck.push(club_six);
+        deck.push(club_seven);
+        deck.push(club_eight);
+        deck.push(club_nine);
+        deck.push(club_ten);
+        deck.push(club_jack);
+        deck.push(club_queen);
+        deck.push(club_king);
+
+        deck.push(spade_ace);
+        deck.push(spade_two);
+        deck.push(spade_three);
+        deck.push(spade_four);
+        deck.push(spade_five);
+        deck.push(spade_six);
+        deck.push(spade_seven);
+        deck.push(spade_eight);
+        deck.push(spade_nine);
+        deck.push(spade_ten);
+        deck.push(spade_jack);
+        deck.push(spade_queen);
+        deck.push(spade_king);
 
         Pile {
+            pile,
             cards: deck.clone(),
             direction,
             position,
@@ -310,6 +337,13 @@ pub struct GameState<> {
     pub diamonds_pile: Pile,
     pub clubs_pile: Pile,
     pub spades_pile: Pile,
+    pub first: Pile,
+    pub second: Pile,
+    pub third: Pile,
+    pub fourth: Pile,
+    pub fifth: Pile,
+    pub sixth: Pile,
+    pub seventh: Pile,
     pub current_cards: Option<Pile>,
     pub gameover: bool,
     pub mouse_position: (f32, f32),
@@ -318,22 +352,52 @@ pub struct GameState<> {
 
 impl<> GameState<> {
     pub fn new(ctx: &mut Context) -> Self {
-        GameState {
+        let mut game_state =  GameState {
             screen: graphics::ScreenImage::new(ctx, graphics::ImageFormat::Rgba8UnormSrgb, 1., 1., 1),
-            deck: Pile::new_deck(ctx, None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            discard: Pile::new(None, (2.0*CARD_WIDTH + 10.0, 1.0*CARD_HEIGHT)),
-            hearts_pile: Pile::new(None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            diamonds_pile: Pile::new(None, (5.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            clubs_pile: Pile::new(None, (7.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
-            spades_pile: Pile::new(None, (9.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            deck: Pile::new_deck(ctx, Piles::Deck, None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            discard: Pile::new(Piles::Discard, None, (2.0*CARD_WIDTH + 10.0, 1.0*CARD_HEIGHT)),
+            hearts_pile: Pile::new(Piles::Hearts, None, (1.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            diamonds_pile: Pile::new(Piles::Discard, None, (5.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            clubs_pile: Pile::new(Piles::Clubs, None, (7.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            spades_pile: Pile::new(Piles::Spades, None, (9.0*CARD_WIDTH, 1.0*CARD_HEIGHT)),
+            first: Pile::new(Piles::First, None, (1.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            second: Pile::new(Piles::Second, None, (3.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            third: Pile::new(Piles::Third, None, (5.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            fourth: Pile::new(Piles::Fourth, None, (7.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            fifth: Pile::new(Piles::Fifth, None, (9.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            sixth: Pile::new(Piles::Sixth, None, (11.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
+            seventh: Pile::new(Piles::Seventh, None, (13.0*CARD_WIDTH, 3.0*CARD_HEIGHT)),
             current_cards: None,
             gameover: false,
             mouse_position: (0.0, 0.0),
             current_pile: None,
+        };
+
+        let mut game_piles: Vec<&mut Pile> = vec![&mut game_state.first, &mut game_state.second, &mut game_state.third, &mut game_state.fourth, &mut game_state.fifth, &mut game_state.sixth, &mut game_state.seventh];
+
+        let mut current_pile_index: usize = 0;
+        while current_pile_index < 7 {
+            let mut index: usize = current_pile_index;
+            while index < 7 {
+                //game_piles[index].cards.push(game_state.deck.cards.remove(0));
+                if index == current_pile_index {
+                    game_state.deck.move_card(game_piles[index], 0, false, true);
+                } else {
+                    game_state.deck.move_card(game_piles[index], 0, false, false);
+                }
+                index += 1;
+            }
+            current_pile_index += 1;
         }
+
+        return game_state
     }
 
     pub fn set_mouse_position(&mut self, position: (f32, f32)) {
         self.mouse_position = position;
+    }
+
+    pub fn set_current_pile(&mut self, pile: Option<Piles>) {
+        self.current_pile = pile;
     }
 }
